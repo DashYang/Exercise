@@ -1,3 +1,7 @@
+/*********************
+ *  this is a copy of https://blog.csdn.net/carbon06/article/details/78171588
+ *********************/
+
 #include <queue>
 
 class ThreadPool {
