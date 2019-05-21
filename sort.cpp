@@ -1,6 +1,7 @@
 #include "sort.h"
 #include <time.h>
 #include <iostream>
+#include <map>
 #include <thread>
 #include "thread_pool.cpp"
 
@@ -187,6 +188,14 @@ bool Tester::MergeSort(const std::vector<PartitionPtr>& test_case, int begin, in
     }
 
     // make sort list to partitions
+    MakeSortListToPartition(begin, end, sort_list, test_case);
+    // std::cout << std::endl;
+    return true;
+}
+
+void Tester::MakeSortListToPartition(const int& begin, const int& end,
+                                     const std::vector<int>& sort_list,
+                                     std::vector<PartitionPtr> test_case) {
     int partition_index = begin;
     int data_block_index = 0;
     int value_index = 0;
@@ -231,8 +240,6 @@ bool Tester::MergeSort(const std::vector<PartitionPtr>& test_case, int begin, in
         value_index++;
         sort_index++;
     }
-    // std::cout << std::endl;
-    return true;
 }
 
 void Tester::SortPartitions(std::vector<PartitionPtr>& test_case, bool parallel) {
@@ -309,6 +316,64 @@ void Tester::SortPartitions(std::vector<PartitionPtr>& test_case, bool parallel)
     }
 }
 
+void Tester::HeapSortPartitions(std::vector<PartitionPtr>& test_case) {
+    if (test_case.size() <= 1)
+        return;
+
+    // the first one is the index of partition, the second one is value
+    auto cmp = [](std::pair<int, int> a, std::pair<int, int> b) { return a.second > b.second; };
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, decltype(cmp)>
+        waitting_queue(cmp);
+    std::vector<int> sort_list;
+
+    std::map<int, std::pair<int, int>> index_map;
+    for (int i = 0; i < test_case.size(); i++) {
+        if (test_case[i]->GetSize() > 0 && test_case[i]->GetDataBlock(0)->GetSize() > 0) {
+            int value = 0;
+            test_case[i]->GetDataBlock(0)->Get(0, value);
+            waitting_queue.push(std::make_pair(i, value));
+            index_map.insert({i, std::make_pair(0, 0)});
+        }
+    }
+
+    while (!waitting_queue.empty()) {
+        auto top = waitting_queue.top();
+        waitting_queue.pop();
+        if (top.second == max_partition_value_ + 1) {
+            break;
+        }
+        // std::cout << "pop " << top.second << " " << top.first << std::endl;
+        sort_list.push_back(top.second);
+
+        // get next partition value
+        int partition_id = top.first;
+        PartitionPtr partition = test_case[partition_id];
+        auto location = index_map[partition_id];
+        int data_block_index = location.first;
+        int index = location.second + 1;
+        int next_value = max_partition_value_ + 1;
+        while (true) {
+            if (data_block_index >= partition->GetSize()) {
+                waitting_queue.push(
+                    std::make_pair(partition_id, next_value));
+                break;
+            } else {
+                if (index >= partition->GetDataBlock(data_block_index)->GetSize()) {
+                    data_block_index++;
+                    index = 0;
+                } else {
+                    partition->GetDataBlock(data_block_index)->Get(index, next_value);
+                    index_map[partition_id] = std::make_pair(data_block_index, index);
+                    waitting_queue.push(std::make_pair(partition_id, next_value));
+                    break;
+                }
+            }
+        }
+    }
+
+    MakeSortListToPartition(0, test_case.size() - 1, sort_list, test_case);
+}
+
 bool Tester::CheckResult(std::vector<PartitionPtr>& test_case) {
     int last_number = min_partition_value_;  // the min number can appear int partition
     for (PartitionPtr& par : test_case) {
@@ -344,14 +409,15 @@ void Tester::RunTestCase() {
          partition_number++) {
         std::vector<PartitionPtr> test_case;
 
+        long long start = 0, end = 0;
         // 1. parallel merge sort
         GenerateTestCase(partition_number, test_case);
         // std::cout << "before sort" << std::endl;
         // PrintTestCase(test_case);
-        auto start = GetCurrentTimestamp();
+        start = GetCurrentTimestamp();
         // SortPartitions(test_case, false);
         SortPartitions(test_case, true);
-        auto end = GetCurrentTimestamp();
+        end = GetCurrentTimestamp();
         // std::cout << "after sort" << std::endl;
         // PrintTestCase(test_case);
         if (!CheckResult(test_case)) {
@@ -375,6 +441,23 @@ void Tester::RunTestCase() {
             failed_test_cases_.push_back(test_case);
         } else {
             std::cout << "single thread pass " << partition_number << " test case! "
+                      << (end - start) << "ms." << std::endl;
+        }
+
+        // 3. heap sortition
+        GenerateTestCase(partition_number, test_case);
+        // std::cout << "before sort" << std::endl;
+        // PrintTestCase(test_case);
+        start = GetCurrentTimestamp();
+        // SortPartitions(test_case, false);
+        HeapSortPartitions(test_case);
+        end = GetCurrentTimestamp();
+        // std::cout << "after sort" << std::endl;
+        // PrintTestCase(test_case);
+        if (!CheckResult(test_case)) {
+            failed_test_cases_.push_back(test_case);
+        } else {
+            std::cout << "heap sortion pass " << partition_number << " test case! "
                       << (end - start) << "ms." << std::endl;
         }
     }

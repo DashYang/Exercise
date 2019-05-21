@@ -50,10 +50,12 @@ private:
 
     // sort partitions
     bool MergeSort(const std::vector<PartitionPtr>& test_case, int begin, int mid, int end);
+    void MakeSortListToPartition(const int& begin, const int&end, const std::vector<int>& sort_list, std::vector<PartitionPtr> test_case);
 
 public:
     // sort these partitions
     void SortPartitions(std::vector<PartitionPtr>& test_case, bool parallel = false);
+    void HeapSortPartitions(std::vector<PartitionPtr>& test_case);
     bool CheckResult(std::vector<PartitionPtr>& test_case);
     void RunTestCase();
     void PrintResult();
