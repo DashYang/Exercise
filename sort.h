@@ -45,17 +45,19 @@ public:
 private:
     // get an value from test case by 1. partition 2 data block 3 index. if return false, we need
     // loop until value is found
-    bool GetValueByPDI(const std::vector<PartitionPtr> test_case, int& partition_index,
+    bool GetValueByPDI(const std::vector<PartitionPtr>& test_case, int& partition_index,
                        int& data_block_index, int& value_index, int& value);
 
     // sort partitions
     bool MergeSort(const std::vector<PartitionPtr>& test_case, int begin, int mid, int end);
-    void MakeSortListToPartition(const int& begin, const int&end, const std::vector<int>& sort_list, std::vector<PartitionPtr> test_case);
+    bool MergeSortList(const std::vector<int>& input, std::vector<int>& output, int begin, int mid, int end);
+    void MakeSortListToPartition(const int& begin, const int&end, const std::vector<int>& sort_list, std::vector<PartitionPtr> test_case, int total_cnt = 0);
 
 public:
     // sort these partitions
     void SortPartitions(std::vector<PartitionPtr>& test_case, bool parallel = false);
-    void HeapSortPartitions(std::vector<PartitionPtr>& test_case);
+    void HeapSortPartitions(std::vector<PartitionPtr>& test_case, bool pre_resize);
+    void ParallelMergeSortWithoutCopy(std::vector<PartitionPtr>& test_case);
     bool CheckResult(std::vector<PartitionPtr>& test_case);
     void RunTestCase();
     void PrintResult();
